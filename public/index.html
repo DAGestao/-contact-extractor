@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extrair Contatos</title>
+    <link rel="stylesheet" type="text/css" href="styles.css">
+
+</head>
+
+<body>
+
+    <header>
+        <nav>
+            <ul>
+                <li><a href="/">Extrair Contatos</a></li>
+                <li><a href="/addGrup">Adicionar Participantes</a></li>
+            </ul>
+        </nav>
+    </header>
+    
+    <h1 id="titulo">Extrair Contatos</h1>
+
+    <div id="menuConteiner">
+        <h1>Menu</h1>
+        <label for="instancia">Digite o nome da sua instância:</label>
+        <input type="text" id="instancia" placeholder="Digite a instância">
+        <button onclick="coletarDados()">Coletar</button>
+
+
+        <h2>Lista de Grupos:</h2>
+
+        <select id="listaSuspensa">
+            <!-- As opções serão adicionadas dinamicamente aqui -->
+        </select>
+
+        <button onclick="downloadXLSX()">Download XLSX</button>
+
+    </div>
+
+
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="close-edit-modal" onclick="closeLoginModal()">&times;</span>
+            <h2>Login</h2>
+            <input type="text" id="urlInput" placeholder="URL da Evolution">
+            <input type="text" id="apiKeyInput" placeholder="API Key">
+            <button id="loginButton">Logar</button>
+        </div>
+    </div>
+
+    <script>
+
+        function openLoginModal() {
+            const modal = document.getElementById('loginModal');
+            modal.style.display = 'block';
+        }
+
+        // Função para fechar o modal de edição
+        function closeLoginModal() {
+            const modal = document.getElementById('loginModal');
+            modal.style.display = 'none';
+        }
+
+
+        let responseDataArm = null; // Armazenar os dados da requisição
+
+        let url, apiKey;
+
+        url = localStorage.getItem('url');
+        apiKey = localStorage.getItem('apiKey');
+
+        function coletarDados() {
+            const instancia = document.getElementById("instancia").value;
+
+            if (!url && !apiKey) {
+
+                openLoginModal()
+                
+
+            } else {
+
+                // Enviar a requisição POST para localhost/findData
+                fetch("/findData", {
+                    method: "POST",
+                    body: JSON.stringify({ instancia: instancia, urlevo: url, key: apiKey }),
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+                })
+                    .then(response => response.json())
+                    .then(responseData => {
+                        responseDataArm = responseData;
+                        const listaSuspensa = document.getElementById("listaSuspensa");
+                        listaSuspensa.innerHTML = ""; // Limpa a lista suspensa
+
+                        if (responseData.error) {
+                            console.error("Erro ao coletar dados:", responseData.error);
+                            localStorage.setItem('url', '');
+                            localStorage.setItem('apiKey', '');
+
+                            url = ''
+                            apiKey = ''
+
+                            coletarDados()
+
+                        } else {
+                            // Agora, responseData.data é um array
+                            responseData.data.forEach(item => {
+                                const option = document.createElement("option");
+                                option.value = item.subject; // Valor da opção é o "subject"
+                                option.text = item.subject; // Texto da opção é o "subject"
+                                listaSuspensa.appendChild(option);
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Erro ao coletar dados:", error);
+
+                        localStorage.setItem('url', '');
+                        localStorage.setItem('apiKey', '');
+
+                        url = ''
+                        apiKey = ''
+
+                        coletarDados()
+
+                    });
+
+            }
+        }
+
+        function downloadXLSX() {
+            if (!responseDataArm || !responseDataArm.data) {
+                console.error("Nenhum dado para download.");
+                return;
+            }
+
+            const listaSuspensa = document.getElementById("listaSuspensa");
+            const selectedSubject = listaSuspensa.value; // Obtém o "subject" selecionado
+
+            // Filtra os dados relevantes com base no "subject" selecionado
+            const filteredData = responseDataArm.data.filter(item => item.subject === selectedSubject);
+
+            // Modificar os IDs para remover "@s.whatsapp.net"
+            const modifiedData = filteredData.map(item => {
+                const modifiedParticipants = item.participants.map(participant => {
+                    const idWithoutSuffix = participant.id.split('@')[0]; // Remove o "@s.whatsapp.net"
+                    return { id: idWithoutSuffix, admin: participant.admin };
+                });
+
+                return { ...item, participants: modifiedParticipants };
+            });
+
+            // Enviar uma nova solicitação POST para sua API local para baixar o arquivo XLSX
+            fetch("/downloadXLSX", {
+                method: "POST",
+                body: JSON.stringify(modifiedData), // Enviar a versão modificada dos dados
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+                .then(response => response.blob())
+                .then(blob => {
+                    // Criar um URL para o blob
+                    const blobURL = URL.createObjectURL(blob);
+
+                    // Criar um link para download
+                    const link = document.createElement('a');
+                    link.href = blobURL;
+                    link.download = selectedSubject + '.xlsx';
+
+                    // Simular o clique no link para iniciar o download
+                    link.click();
+                })
+                .catch(error => {
+                    console.error("Erro ao fazer o download XLSX:", error);
+                });
+        }
+
+
+
+        document.getElementById('loginButton').addEventListener('click', () => {
+            url = document.getElementById('urlInput').value;
+            apiKey = document.getElementById('apiKeyInput').value;
+
+
+            localStorage.setItem('url', url);
+            localStorage.setItem('apiKey', apiKey);
+
+
+            // Verifique se os campos foram preenchidos
+            if (url && apiKey) {
+                // Chame a função de login e busca de linhas imediatamente
+
+                // Feche o modal após o login
+                const loginModal = document.getElementById('loginModal');
+                loginModal.style.display = 'none';
+                coletarDados()
+
+                // Agende a chamada da função de login e busca de linhas a cada 2 minutos
+                setInterval(loginAndFetchLines, 2 * 60 * 1000); // 2 minutos em milissegundos
+            } else {
+                alert('Preencha todos os campos para fazer o login.');
+            }
+        });
+
+    </script>
+</body>
+
+</html>

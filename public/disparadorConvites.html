@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <title>Enviar Arquivo XLSX</title>
+</head>
+<body>
+    <h1>Enviar Arquivo XLSX</h1>
+    <form action="/sendInviteForPartic" method="post" enctype="multipart/form-data">
+        <label for="file">Selecione um arquivo XLSX:</label>
+        <input type="file" name="xlsxFile" id="file" accept=".xlsx" required>
+        <br>
+        <label for="name">Digite um nome:</label>
+        <input type="text" name="name" id="name" required>
+        <br>
+        <label for="customMessage">Mensagem Personalizada:</label>
+        <textarea name="customMessage" id="customMessage"></textarea>
+        <br>
+        <input type="submit" value="Enviar">
+    </form>
+    
+</body>
+</html>

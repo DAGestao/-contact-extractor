@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <title>Enviar Arquivo XLSX</title>
+</head>
+
+
+<body>
+    <header>
+        <nav>
+            <ul>
+                <li><a href="/">Extrair Contatos</a></li>
+                <li><a href="/addGrup">Adicionar Participantes</a></li>
+            </ul>
+        </nav>
+    </header>
+    
+    <h1 id="titulo">Adicionar de Participantes</h1>
+    <div id="menuConteiner">
+
+        <form>
+            <label for="file">Selecione um arquivo XLSX:</label>
+            <input type="file" name="xlsxFile" id="file" accept=".xlsx" required>
+
+            <br>
+            <label for="name">Instancia:</label>
+            <input type="text" name="instancia" id="instancia" required>
+            <br>
+
+            <br>
+            <label for="name">Digite o id do Grupo:</label>
+            <input type="text" name="name" id="name" required>
+            <br>
+            <br>
+            <button id="submitButton">Adicionar</button>
+
+
+            <div id="loginModal" class="modal">
+                <div class="modal-content">
+                    <span class="close" id="close-edit-modal" onclick="closeLoginModal()">&times;</span>
+                    <h2>Login</h2>
+                    <input type="text" id="urlInput" placeholder="URL da Evolution">
+                    <input type="text" id="apiKeyInput" placeholder="API Key">
+                    <button id="loginButton">Logar</button>
+                </div>
+            </div>
+
+
+            <script>
+
+                function openLoginModal() {
+                    const modal = document.getElementById('loginModal');
+                    modal.style.display = 'block';
+                }
+
+                // Função para fechar o modal de edição
+                function closeLoginModal() {
+                    const modal = document.getElementById('loginModal');
+                    modal.style.display = 'none';
+                }
+
+                let url, apiKey;
+
+                url = localStorage.getItem('url');
+                apiKey = localStorage.getItem('apiKey');
+
+                document.getElementById('loginButton').addEventListener('click', () => {
+                    url = document.getElementById('urlInput').value;
+                    apiKey = document.getElementById('apiKeyInput').value;
+
+
+                    localStorage.setItem('url', url);
+                    localStorage.setItem('apiKey', apiKey);
+
+
+                    // Verifique se os campos foram preenchidos
+                    if (url && apiKey) {
+                        // Chame a função de login e busca de linhas imediatamente
+
+                        // Feche o modal após o login
+                        const loginModal = document.getElementById('loginModal');
+                        loginModal.style.display = 'none';
+                        coletarDados()
+
+                        // Agende a chamada da função de login e busca de linhas a cada 2 minutos
+                        setInterval(loginAndFetchLines, 2 * 60 * 1000); // 2 minutos em milissegundos
+                    } else {
+                        alert('Preencha todos os campos para fazer o login.');
+                    }
+                });
+
+
+                // Add an event listener to the submit button
+                submitButton.addEventListener('click', function (event) {
+
+                    var fileSelected = document.getElementById('file').value
+
+                    if (!url && !apiKey) {
+                        openLoginModal()
+
+                    } else if (!fileSelected) {
+
+                        alert('Selecione um Arquivo')
+
+                    } else{
+
+
+
+
+                        // Get the form element
+                        const form = document.querySelector('form');
+
+                    // Get the submit button by its id
+                    const submitButton = document.getElementById('submitButton');
+
+                    event.preventDefault(); // Prevent the default form submission
+
+                    const formData = new FormData(form);
+
+                    // Add additional variables to the request body
+
+                    formData.append('urlevo', url);
+                    formData.append('key', apiKey);
+
+                    const urlreq = '/addPartic';
+                    const xhr = new XMLHttpRequest();
+
+                    xhr.open('POST', urlreq, true);
+
+                    xhr.onload = function () {
+                        if (xhr.status === 200) {
+                            console.log('Request was successful');
+                            console.log(xhr.responseText);
+                        } else {
+                            console.error('Request failed');
+                           
+                            localStorage.setItem('url', '');
+                            localStorage.setItem('apiKey', '');
+                            url = ''
+                            apiKey = ''
+
+
+                            openLoginModal()
+
+                         
+                        }
+                    };
+
+                    xhr.send(formData);
+                }
+                });
+
+            </script>
+
+        </form>
+    </div>
+</body>
